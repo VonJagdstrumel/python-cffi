@@ -1,8 +1,8 @@
 inherit python-wheel
 
 NAME="python-cffi"
-VERSION=1.16.0
-RELEASE=1
+VERSION=2.1.1
+RELEASE=2
 CATEGORY="Python"
 SUMMARY="Python Foreign Function Interface"
 DESCRIPTION="C Foreign Function Interface for Python. The goal is to provide a
@@ -12,6 +12,58 @@ declarations written in C."
 PATCH_URI="0.9.2-cygwin.patch"
 CPPFLAGS="-D_CFFI_NO_LIMITED_API"
 
-python311_cffi_REQUIRES="python311-pycparser"
+python312_cffi_REQUIRES="python312-pycparser"
+python312_cffi_CONTENTS+="
+	usr/bin/cffi-gen-src3.12
+	etc/postinstall/python312-cffi.sh
+	etc/preremove/python312-cffi.sh
+"
 python313_cffi_REQUIRES="python313-pycparser"
+python313_cffi_CONTENTS+="
+	usr/bin/cffi-gen-src3.13
+	etc/postinstall/python313-cffi.sh
+	etc/preremove/python313-cffi.sh
+"
 python_cffi_debuginfo_OBSOLETES="python3-cffi-debuginfo"
+
+src_install() {
+	cd ${B}
+	python_wheel_install
+
+	for f in cffi-gen-src; do
+		# creating versioned info"
+		pushd ${D}/usr/bin
+		for v in ${PYTHON_WHEEL_VERSIONS//:/ }
+		do
+			cp ${f} ${f}${v}
+			sed -i -e "1s/python$/python${v}/g" ${f}${v}
+			sed -i -e "1s/3.[0-9]\+/${v}/g" ${f}${v}
+			sed -i -e "1s/.exe//g" ${f}${v}
+		done
+
+		# removing unversioned info
+		rm ${f}
+	done
+
+	# writing post install alternatives script
+	mkdir -p ${D}/etc/postinstall
+	pushd ${D}/etc/postinstall
+	for v in ${PYTHON_WHEEL_VERSIONS//:/ }
+	do
+		ver=$(echo ${v} | sed "s/\.//")
+		echo "# Install this package as a cffi-gen-src alternative.
+/usr/sbin/alternatives --install /usr/bin/cffi-gen-src cffi-gen-src /usr/bin/cffi-gen-src${v} ${ver}
+" > python${ver}-cffi.sh
+	done
+
+	# writing pre remove alternatives script
+	mkdir -p ${D}/etc/preremove
+	pushd ${D}/etc/preremove
+	for v in ${PYTHON_WHEEL_VERSIONS//:/ }
+	do
+		ver=$(echo ${v} | sed "s/\.//")
+		echo "# Remove this package as a f2py alternative.
+/usr/sbin/alternatives --remove f2py /usr/bin/f2py${v}
+" > python${ver}-cffi.sh
+	done
+}

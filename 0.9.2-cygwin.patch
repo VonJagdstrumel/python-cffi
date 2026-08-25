@@ -9,17 +9,3 @@
          else:
              suffixes = [".so"]
  
---- origsrc/cffi-1.16.0/src/c/_cffi_backend.c	2023-09-28 19:43:07.000000000 +0200
-+++ src/cffi-1.16.0/src/c/_cffi_backend.c	2024-05-14 19:25:37.413150200 +0200
-@@ -6118,7 +6118,11 @@ static void _my_PyErr_WriteUnraisable(Py
- 
-     PyErr_Restore(t, v, tb);
-     if (s != NULL) {
-+#if PY_MINOR_VERSION >= 13
-+        PyErr_FormatUnraisable(PyText_AS_UTF8(s));
-+#else
-         _PyErr_WriteUnraisableMsg(PyText_AS_UTF8(s), NULL);
-+#endif
-         Py_DECREF(s);
-     }
-     else
